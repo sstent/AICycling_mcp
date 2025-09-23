@@ -1,0 +1,13 @@
+aiohttp>=3.8.0
+pyyaml>=6.0
+mcp>=0.1.0
+
+# Built-in modules (no installation needed)
+# asyncio
+# pathlib
+# dataclasses
+# logging
+
+# For direct Garth MCP server integration
+# Note: You need to install and set up the garth-mcp-server separately
+# Follow: https://github.com/matin/garth-mcp-server

@@ -1,0 +1,17 @@
+Analyze my cycling workout against my training rules and goals.
+
+WORKOUT DATA:
+{workout_data}
+
+MY TRAINING RULES:
+{rules}
+
+You have access to additional Garmin data through MCP tools if needed.
+
+Please provide:
+1. Overall assessment of the workout
+2. How well it aligns with my rules and goals
+3. Areas for improvement
+4. Specific feedback on power, heart rate, duration, and intensity
+5. Recovery recommendations
+6. Comparison with my typical performance metrics
