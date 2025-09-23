@@ -9,131 +9,26 @@ import platform
 import subprocess
 import sys
 import time
+import yaml
+import os
+import shutil
+import logging
 from typing import Dict, List, Any, Optional
 
-class MCPClient:
-    def __init__(self, server_command: List[str]):
-        self.server_command = server_command
-        self.process = None
-        self.request_id = 1
-        
-    async def start_server(self):
-        """Start the MCP server process."""
-        print(f"Starting MCP server: {' '.join(self.server_command)}")
-        print(f"Python version: {platform.python_version()}")
-        
-        self.process = await asyncio.create_subprocess_exec(
-            *self.server_command,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        
-        # Give the server a moment to start
-        await asyncio.sleep(0.5)
-        
-        # Debug: show process object type
-        print(f"Process object type: {type(self.process)}")
-        
-        # Check if process has terminated
-        if self.process.returncode is not None:
-            stderr = await self.process.stderr.read()
-            raise Exception(f"Server failed to start. Error: {stderr.decode()}")
-            
-        print("Server started successfully")
-        
-    async def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
-        """Send a JSON-RPC request to the MCP server."""
-        if not self.process:
-            raise Exception("Server not started")
-            
-        request = {
-            "jsonrpc": "2.0",
-            "id": self.request_id,
-            "method": method
-        }
-        
-        if params is not None:
-            request["params"] = params
-            
-        self.request_id += 1
-        
-        # Send request
-        request_json = json.dumps(request) + "\n"
-        print(f"Sending request: {request_json.strip()}")
-        self.process.stdin.write(request_json.encode())
-        await self.process.stdin.drain()
-        
-        # Read response
-        response_line = await self.process.stdout.readline()
-        if not response_line:
-            raise Exception("No response from server")
-            
-        try:
-            response_str = response_line.decode().strip()
-            print(f"Received response: {response_str}")
-            response = json.loads(response_str)
-            return response
-        except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON response: {e}. Response: {response_str}")
-    
-    async def initialize(self):
-        """Initialize the MCP server."""
-        print("Initializing server...")
-        
-        try:
-            response = await self.send_request("initialize", {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "tools": {}
-                },
-                "clientInfo": {
-                    "name": "mcp-tool-lister",
-                    "version": "1.0.0"
-                }
-            })
-            
-            if "error" in response:
-                raise Exception(f"Initialization failed: {response['error']}")
-                
-            print("Server initialized successfully")
-            return response.get("result", {})
-        except Exception as e:
-            print(f"Initialization error: {str(e)}")
-            raise
-        
-    async def list_tools(self) -> List[Dict[str, Any]]:
-        """List available tools from the MCP server."""
-        print("Requesting tools list...")
-        
-        try:
-            # Pass empty parameters object to satisfy server requirements
-            response = await self.send_request("tools/list", {})
-            
-            if "error" in response:
-                raise Exception(f"Failed to list tools: {response['error']}")
-                
-            tools = response.get("result", {}).get("tools", [])
-            print(f"Found {len(tools)} tools")
-            return tools
-        except Exception as e:
-            print(f"Tool listing error: {str(e)}")
-            raise
-        
-    async def stop_server(self):
-        """Stop the MCP server process."""
-        if self.process:
-            print("Stopping server...")
-            self.process.terminate()
-            try:
-                await asyncio.wait_for(self.process.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
-                print("Server didn't stop gracefully, killing...")
-                self.process.kill()
-                await self.process.wait()
-            print("Server stopped")
+# MCP Protocol imports
+try:
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    print("MCP not available. Install with: pip install mcp")
 
-def print_tools(tools: List[Dict[str, Any]]):
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def print_tools(tools: List[Any]):
     """Pretty print the tools list."""
     if not tools:
         print("\nNo tools available.")
@@ -141,17 +36,17 @@ def print_tools(tools: List[Dict[str, Any]]):
         
     print(f"\n{'='*60}")
     print("AVAILABLE TOOLS")
-    print(f"{'='*60}")
+    print(f"\n{'='*60}")
     
     for i, tool in enumerate(tools, 1):
-        name = tool.get("name", "Unknown")
-        description = tool.get("description", "No description available")
+        name = tool.name
+        description = tool.description if hasattr(tool, 'description') else 'No description available'
         
         print(f"\n{i}. {name}")
         print(f"   Description: {description}")
         
         # Print input schema if available
-        input_schema = tool.get("inputSchema", {})
+        input_schema = tool.input_schema if hasattr(tool, 'input_schema') else {}
         if input_schema:
             properties = input_schema.get("properties", {})
             if properties:
@@ -166,39 +61,77 @@ def print_tools(tools: List[Dict[str, Any]]):
     print(f"\n{'='*60}")
 
 async def main():
+    if not MCP_AVAILABLE:
+        sys.exit(1)
+
     if len(sys.argv) < 2:
         print("Usage: python mcp_tool_lister.py <server_command> [args...]")
-        print("Example: python mcp_tool_lister.py uvx my-mcp-server")
+        print("Example: python mcp_tool_lister.py uvx garth-mcp-server")
         sys.exit(1)
     
-    server_command = sys.argv[1:]
-    client = MCPClient(server_command)
+    server_command_args = sys.argv[1:]
+
+    # Load config
+    with open("config.yaml") as f:
+        config_data = yaml.safe_load(f)
     
+    garth_token = config_data.get("garth_token")
+    if not garth_token:
+        print("Error: garth_token not found in config.yaml")
+        sys.exit(1)
+
+    env = os.environ.copy()
+    env["GARTH_TOKEN"] = garth_token
+
+    server_command = shutil.which(server_command_args[0])
+    if not server_command:
+        logger.error(f"Could not find '{server_command_args[0]}' in your PATH.")
+        raise FileNotFoundError(f"{server_command_args[0]} not found")
+
+    server_params = StdioServerParameters(
+        command="/bin/bash",
+        args=["-c", f"exec {' '.join(server_command_args)} 1>&2"],
+        capture_stderr=True,
+        env=env,
+    )
+
+    async def log_stderr(stderr):
+        async for line in stderr:
+            logger.info(f"[server-stderr] {line.decode().strip()}")
+
+    client_context = None
     try:
-        # Start and initialize the server
-        await client.start_server()
-        init_result = await client.initialize()
+        logger.info(f"Starting MCP server: {' '.join(server_command_args)}")
+        client_context = stdio_client(server_params)
+        streams = await client_context.__aenter__()
+        if len(streams) == 3:
+            read_stream, write_stream, stderr_stream = streams
+            stderr_task = asyncio.create_task(log_stderr(stderr_stream))
+        else:
+            read_stream, write_stream = streams
+            stderr_task = None
+
+        session = ClientSession(read_stream, write_stream)
+        await session.initialize()
         
-        # Print server info
-        server_info = init_result.get("serverInfo", {})
+        server_info = session.server_info
         if server_info:
-            print(f"Server: {server_info.get('name', 'Unknown')} v{server_info.get('version', 'Unknown')}")
+            print(f"Server: {server_info.name} v{server_info.version}")
+
+        tools_result = await session.list_tools() # Corrected from list__tools()
+        tools = tools_result.tools if tools_result else []
         
-        capabilities = init_result.get("capabilities", {})
-        if capabilities:
-            print(f"Server capabilities: {', '.join(capabilities.keys())}")
-        
-        # List and display tools
-        tools = await client.list_tools()
         print_tools(tools)
-        
-    except KeyboardInterrupt:
-        print("\nInterrupted by user")
+
+        if stderr_task:
+            stderr_task.cancel()
+
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
     finally:
-        await client.stop_server()
+        if client_context:
+            await client_context.__aexit__(None, None, None)
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,13 +1,22 @@
 aiohttp>=3.8.0
 pyyaml>=6.0
 mcp>=0.1.0
+pydantic-ai>=0.0.1
+
+# Pydantic AI dependencies
+pydantic>=2.0.0
+openai>=1.0.0  # Required for AsyncOpenAI client
 
 # Built-in modules (no installation needed)
 # asyncio
-# pathlib
+# pathlib  
 # dataclasses
 # logging
 
 # For direct Garth MCP server integration
 # Note: You need to install and set up the garth-mcp-server separately
 # Follow: https://github.com/matin/garth-mcp-server
+
+# Installation commands:
+# pip install pydantic-ai
+# npm install -g garth-mcp-server
