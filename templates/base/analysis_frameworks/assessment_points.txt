@@ -1,7 +1,0 @@
-Please provide:
-1. Overall assessment of the workout
-2. How well it aligns with my rules and goals
-3. Areas for improvement
-4. Specific feedback on power, heart rate, duration, and intensity
-5. Recovery recommendations
-6. Comparison with typical performance metrics (use user profile data for baselines)

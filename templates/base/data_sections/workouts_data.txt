@@ -1,2 +1,0 @@
-RECENT WORKOUTS:
-{workouts_data}

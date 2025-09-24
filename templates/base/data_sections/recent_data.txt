@@ -1,2 +1,0 @@
-RECENT DATA:
-{recent_data}

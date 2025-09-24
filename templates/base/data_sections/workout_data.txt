@@ -1,2 +1,0 @@
-WORKOUT DATA:
-{workout_data}

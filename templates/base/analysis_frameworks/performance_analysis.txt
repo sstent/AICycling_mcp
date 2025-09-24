@@ -1,7 +1,0 @@
-Focus your analysis on:
-1. **Performance Analysis**: Analyze power, heart rate, training load, and recovery metrics from the provided data
-2. **Training Periodization**: Consider the recent activity patterns and progression
-3. **Actionable Recommendations**: Provide specific, measurable guidance based on the data
-4. **Risk Assessment**: Identify any signs of overtraining or injury risk from the available metrics
-
-Be thorough and use the provided data points to support your recommendations.

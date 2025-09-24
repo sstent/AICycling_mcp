@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""
+Core Application - Clean skeleton with separated concerns
+"""
+
+import asyncio
+import logging
+from pathlib import Path
+from typing import Dict, Any, Optional
+
+from config import Config, load_config
+from llm_client import LLMClient
+from mcp_client import MCPClient
+from cache_manager import CacheManager
+from template_engine import TemplateEngine
+
+logger = logging.getLogger(__name__)
+
+class CyclingAnalyzerApp:
+    """Main application class - orchestrates all components"""
+    
+    def __init__(self, config: Config):
+        self.config = config
+        self.llm_client = LLMClient(config)
+        self.mcp_client = MCPClient(config)
+        self.cache_manager = CacheManager()
+        self.template_engine = TemplateEngine(config.templates_dir)
+        
+    async def initialize(self):
+        """Initialize all components"""
+        logger.info("Initializing application components...")
+        
+        await self.llm_client.initialize()
+        await self.mcp_client.initialize()
+        await self._preload_cache()
+        
+        logger.info("Application initialization complete")
+    
+    async def cleanup(self):
+        """Cleanup all components"""
+        await self.mcp_client.cleanup()
+        await self.llm_client.cleanup()
+    
+    async def _preload_cache(self):
+        """Pre-load and cache common MCP responses"""
+        logger.info("Pre-loading cache...")
+        
+        # Cache user profile
+        if await self.mcp_client.has_tool("user_profile"):
+            profile = await self.mcp_client.call_tool("user_profile", {})
+            self.cache_manager.set("user_profile", profile)
+        
+        # Cache recent activities
+        if await self.mcp_client.has_tool("get_activities"):
+            activities = await self.mcp_client.call_tool("get_activities", {"limit": 10})
+            self.cache_manager.set("recent_activities", activities)
+            
+            # Find and cache last cycling activity details
+            cycling_activity = self._find_last_cycling_activity(activities)
+            if cycling_activity and await self.mcp_client.has_tool("get_activity_details"):
+                details = await self.mcp_client.call_tool(
+                    "get_activity_details", 
+                    {"activity_id": cycling_activity["activityId"]}
+                )
+                self.cache_manager.set("last_cycling_details", details)
+    
+    def _find_last_cycling_activity(self, activities: list) -> Optional[Dict[str, Any]]:
+        """Find the most recent cycling activity from activities list"""
+        cycling_activities = [
+            act for act in activities
+            if "cycling" in act.get("activityType", {}).get("typeKey", "").lower()
+        ]
+        return max(cycling_activities, key=lambda x: x.get("start_time", "")) if cycling_activities else None
+    
+    # Core functionality methods
+    
+    async def analyze_workout(self, analysis_type: str = "last_workout", **kwargs) -> str:
+        """Analyze workout using LLM with cached data"""
+        template_name = f"workflows/{analysis_type}.txt"
+        
+        # Prepare context data
+        context = {
+            "user_profile": self.cache_manager.get("user_profile", {}),
+            "recent_activities": self.cache_manager.get("recent_activities", []),
+            "last_cycling_details": self.cache_manager.get("last_cycling_details", {}),
+            **kwargs
+        }
+        
+        # Load and render template
+        prompt = self.template_engine.render(template_name, **context)
+        
+        # Call LLM
+        return await self.llm_client.generate(prompt)
+    
+    async def suggest_next_workout(self, **kwargs) -> str:
+        """Generate workout suggestion using MCP tools and LLM"""
+        # Use MCP-enabled agent for dynamic tool usage
+        template_name = "workflows/suggest_next_workout.txt"
+        
+        context = {
+            "training_rules": kwargs.get("training_rules", ""),
+            **kwargs
+        }
+        
+        prompt = self.template_engine.render(template_name, **context)
+        
+        # Use MCP-enabled LLM client for this
+        return await self.llm_client.generate_with_tools(prompt, self.mcp_client)
+    
+    async def enhanced_analysis(self, analysis_type: str, **kwargs) -> str:
+        """Perform enhanced analysis with full MCP tool access"""
+        template_name = "workflows/enhanced_analysis.txt"
+        
+        context = {
+            "analysis_type": analysis_type,
+            "cached_data": self.cache_manager.get_all(),
+            **kwargs
+        }
+        
+        prompt = self.template_engine.render(template_name, **context)
+        return await self.llm_client.generate_with_tools(prompt, self.mcp_client)
+    
+    # Utility methods
+    
+    def list_available_tools(self) -> list:
+        """Get list of available MCP tools"""
+        return self.mcp_client.list_tools()
+    
+    def list_templates(self) -> list:
+        """Get list of available templates"""
+        return self.template_engine.list_templates()
+    
+    def get_cached_data(self, key: str = None) -> Any:
+        """Get cached data by key, or all if no key provided"""
+        return self.cache_manager.get(key) if key else self.cache_manager.get_all()
+
+async def main():
+    """Main entry point"""
+    logging.basicConfig(level=logging.INFO)
+    
+    try:
+        config = load_config()
+        app = CyclingAnalyzerApp(config)
+        
+        await app.initialize()
+        
+        # Example usage
+        print("Available tools:", len(app.list_available_tools()))
+        print("Available templates:", len(app.list_templates()))
+        
+        # Run analysis
+        analysis = await app.analyze_workout("analyze_last_workout", 
+                                            training_rules="Sample rules")
+        print("Analysis:", analysis[:200] + "...")
+        
+    except Exception as e:
+        logger.error(f"Application error: {e}")
+    finally:
+        if 'app' in locals():
+            await app.cleanup()
+
+if __name__ == "__main__":
+    asyncio.run(main())
