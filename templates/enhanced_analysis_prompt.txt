@@ -1,0 +1,17 @@
+Perform a comprehensive {analysis_type} analysis using the provided cycling training data.
+Do not call any tools - all core data is already loaded. Base your analysis on the following information:
+
+{activity_summary}
+
+{user_info}
+
+My training rules and goals:
+{training_rules}
+
+Focus your {analysis_type} analysis on:
+1. **Performance Analysis**: Analyze power, heart rate, training load, and recovery metrics from the provided data
+2. **Training Periodization**: Consider the recent activity patterns and progression
+3. **Actionable Recommendations**: Provide specific, measurable guidance based on the data
+4. **Risk Assessment**: Identify any signs of overtraining or injury risk from the available metrics
+
+Be thorough and use the provided data points to support your recommendations.

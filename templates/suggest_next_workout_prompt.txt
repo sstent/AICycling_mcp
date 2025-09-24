@@ -1,0 +1,16 @@
+Please suggest my next cycling workout based on my recent training history. Use the get_activities tool
+to get my recent activities and analyze the training pattern.
+
+My training rules and goals:
+{training_rules}
+
+Please provide:
+1. Analysis of my recent training pattern
+2. Identified gaps or imbalances in my training
+3. Specific workout recommendation for my next session
+4. Target zones (power, heart rate, duration)
+5. Rationale for the recommendation based on recent performance
+6. Alternative options if weather/time constraints exist
+7. How this fits into my overall training progression
+
+Use additional tools like hrv_data or nightly_sleep to inform recovery status and workout readiness.

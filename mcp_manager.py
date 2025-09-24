@@ -21,6 +21,8 @@ except ImportError:
     Agent = None
     print("Pydantic AI not available. Install with: pip install pydantic-ai")
 
+from templates_manager import TemplateManager
+
 # MCP Protocol imports for direct connection
 try:
     from pydantic_ai.mcp import MCPServerStdio
@@ -79,6 +81,7 @@ class PydanticAIAnalyzer:
     
     def __init__(self, config: Config):
         self.config = config
+        self.template_manager = TemplateManager(self.config.templates_dir)
         self.mcp_server = None
         self.available_tools = []
         self._cached_activity_details = None
@@ -109,11 +112,11 @@ class PydanticAIAnalyzer:
 
         model_name = f"openrouter:{config.openrouter_model}"
         
+        main_system_prompt = self.template_manager.get_template('main_agent_system_prompt.txt')
+        
         self.agent = Agent(
             model=model_name,
-            system_prompt="""You are an expert cycling coach with access to comprehensive Garmin Connect data.
-            You analyze cycling workouts, provide performance insights, and give actionable training recommendations.
-            Use the available tools to gather detailed workout data and provide comprehensive analysis.""",
+            system_prompt=main_system_prompt,
             toolsets=[self.mcp_server] if self.mcp_server else []
         )
 
@@ -276,34 +279,20 @@ class PydanticAIAnalyzer:
         {json.dumps(user_profile, default=str)}
         """
         
-        prompt = f"""
-        Analyze my most recent cycling workout using the provided data. Do not call any tools - all necessary data is already loaded.
- 
-        {activity_summary}
-        
-        {user_info}
- 
-        My training rules and goals:
-        {training_rules}
- 
-        Please provide:
-        1. Overall assessment of the workout
-        2. How well it aligns with my rules and goals
-        3. Areas for improvement
-        4. Specific feedback on power, heart rate, duration, and intensity
-        5. Recovery recommendations
-        6. Comparison with typical performance metrics (use user profile data for baselines)
-        
-        Focus on the provided activity details for your analysis.
-        """
+        prompt = self.template_manager.get_template(
+            'analyze_last_workout_prompt.txt',
+            activity_summary=activity_summary,
+            user_info=user_info,
+            training_rules=training_rules
+        )
  
         try:
             # Create temporary agent without tools for this analysis
             model_name = f"openrouter:{self.config.openrouter_model}"
+            temp_analysis_system_prompt = self.template_manager.get_template('temp_analysis_system_prompt.txt')
             temp_agent = Agent(
                 model=model_name,
-                system_prompt="""You are an expert cycling coach. Analyze the provided cycling workout data and give actionable insights.
-                Do not use any tools - all data is provided in the prompt.""",
+                system_prompt=temp_analysis_system_prompt,
                 toolsets=[]
             )
             
@@ -338,24 +327,10 @@ class PydanticAIAnalyzer:
         else:
             logger.warning("No MCP tools available!")
 
-        prompt = f"""
-        Please suggest my next cycling workout based on my recent training history. Use the get_activities tool
-        to get my recent activities and analyze the training pattern.
-
-        My training rules and goals:
-        {training_rules}
-
-        Please provide:
-        1. Analysis of my recent training pattern
-        2. Identified gaps or imbalances in my training
-        3. Specific workout recommendation for my next session
-        4. Target zones (power, heart rate, duration)
-        5. Rationale for the recommendation based on recent performance
-        6. Alternative options if weather/time constraints exist
-        7. How this fits into my overall training progression
-
-        Use additional tools like hrv_data or nightly_sleep to inform recovery status and workout readiness.
-        """
+        prompt = self.template_manager.get_template(
+            'suggest_next_workout_prompt.txt',
+            training_rules=training_rules
+        )
 
         logger.info("About to call agent.run() with workout suggestion prompt")
         try:
@@ -414,33 +389,21 @@ class PydanticAIAnalyzer:
         {json.dumps(user_profile, default=str)}
         """
         
-        prompt = f"""
-        Perform a comprehensive {analysis_type} analysis using the provided cycling training data.
-        Do not call any tools - all core data is already loaded. Base your analysis on the following information:
- 
-        {activity_summary}
-        
-        {user_info}
- 
-        My training rules and goals:
-        {training_rules}
- 
-        Focus your {analysis_type} analysis on:
-        1. **Performance Analysis**: Analyze power, heart rate, training load, and recovery metrics from the provided data
-        2. **Training Periodization**: Consider the recent activity patterns and progression
-        3. **Actionable Recommendations**: Provide specific, measurable guidance based on the data
-        4. **Risk Assessment**: Identify any signs of overtraining or injury risk from the available metrics
- 
-        Be thorough and use the provided data points to support your recommendations.
-        """
+        prompt = self.template_manager.get_template(
+            'enhanced_analysis_prompt.txt',
+            analysis_type=analysis_type,
+            activity_summary=activity_summary,
+            user_info=user_info,
+            training_rules=training_rules
+        )
  
         try:
             # Create temporary agent without tools for this analysis
             model_name = f"openrouter:{self.config.openrouter_model}"
+            enhanced_temp_system_prompt = self.template_manager.get_template('enhanced_temp_system_prompt.txt')
             temp_agent = Agent(
                 model=model_name,
-                system_prompt="""You are an expert cycling coach. Perform comprehensive analysis using the provided data.
-                Do not use any tools - all relevant data is included in the prompt.""",
+                system_prompt=enhanced_temp_system_prompt,
                 toolsets=[]
             )
             
