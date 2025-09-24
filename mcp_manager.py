@@ -112,7 +112,7 @@ class PydanticAIAnalyzer:
 
         model_name = f"openrouter:{config.openrouter_model}"
         
-        main_system_prompt = self.template_manager.get_template('main_agent_system_prompt.txt')
+        main_system_prompt = self.template_manager.get_template('base/system_prompts/main_agent.txt')
         
         self.agent = Agent(
             model=model_name,
@@ -280,7 +280,7 @@ class PydanticAIAnalyzer:
         """
         
         prompt = self.template_manager.get_template(
-            'analyze_last_workout_prompt.txt',
+            'workflows/analyze_last_workout.txt',
             activity_summary=activity_summary,
             user_info=user_info,
             training_rules=training_rules
@@ -289,7 +289,7 @@ class PydanticAIAnalyzer:
         try:
             # Create temporary agent without tools for this analysis
             model_name = f"openrouter:{self.config.openrouter_model}"
-            temp_analysis_system_prompt = self.template_manager.get_template('temp_analysis_system_prompt.txt')
+            temp_analysis_system_prompt = self.template_manager.get_template('base/system_prompts/no_tools_analysis.txt')
             temp_agent = Agent(
                 model=model_name,
                 system_prompt=temp_analysis_system_prompt,
@@ -328,7 +328,7 @@ class PydanticAIAnalyzer:
             logger.warning("No MCP tools available!")
 
         prompt = self.template_manager.get_template(
-            'suggest_next_workout_prompt.txt',
+            'workflows/suggest_next_workout.txt',
             training_rules=training_rules
         )
 
@@ -390,7 +390,7 @@ class PydanticAIAnalyzer:
         """
         
         prompt = self.template_manager.get_template(
-            'enhanced_analysis_prompt.txt',
+            'workflows/single_workout_analysis.txt',
             analysis_type=analysis_type,
             activity_summary=activity_summary,
             user_info=user_info,
@@ -400,7 +400,7 @@ class PydanticAIAnalyzer:
         try:
             # Create temporary agent without tools for this analysis
             model_name = f"openrouter:{self.config.openrouter_model}"
-            enhanced_temp_system_prompt = self.template_manager.get_template('enhanced_temp_system_prompt.txt')
+            enhanced_temp_system_prompt = self.template_manager.get_template('base/system_prompts/no_tools_analysis.txt')
             temp_agent = Agent(
                 model=model_name,
                 system_prompt=enhanced_temp_system_prompt,

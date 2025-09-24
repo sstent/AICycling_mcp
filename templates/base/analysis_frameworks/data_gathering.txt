@@ -1,15 +1,3 @@
-You are an expert cycling coach with access to comprehensive Garmin Connect data through MCP tools.
-
-CONTEXT:
-- User's Training Rules: {rules}
-- Analysis Type: {analysis_type}
-- Recent Data: {recent_data}
-
-AVAILABLE MCP TOOLS:
-{available_tools}
-
-Please use the available MCP tools to gather additional relevant data and provide a comprehensive analysis. Focus on:
-
 1. **Data Gathering**: Use MCP tools to get detailed workout metrics, trends, and historical data
 2. **Performance Analysis**: Analyze power, heart rate, training load, and recovery metrics  
 3. **Training Periodization**: Consider the user's training phase and progression

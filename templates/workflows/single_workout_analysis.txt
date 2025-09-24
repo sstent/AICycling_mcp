@@ -1,0 +1,9 @@
+Analyze my cycling workout against my training rules and goals.
+
+{workout_data_section}
+
+{rules_section}
+
+You have access to additional Garmin data through MCP tools if needed.
+
+{assessment_points}

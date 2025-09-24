@@ -1,0 +1,2 @@
+ACTIVITY SUMMARY:
+{activity_summary}

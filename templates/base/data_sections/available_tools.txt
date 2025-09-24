@@ -1,0 +1,2 @@
+AVAILABLE MCP TOOLS:
+{available_tools}
