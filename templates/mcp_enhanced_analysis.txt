@@ -16,4 +16,4 @@ Please use the available MCP tools to gather additional relevant data and provid
 4. **Actionable Recommendations**: Provide specific, measurable guidance for future workouts
 5. **Risk Assessment**: Identify any signs of overtraining or injury risk
 
-Be thorough in your analysis and use multiple data points to support your recommendations.
+Be thorough in your analysis and use multiple data points to support your recommendations, but be concise.

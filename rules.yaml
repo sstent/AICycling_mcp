@@ -1,29 +1,42 @@
-heart_rate_zones:
-  zone_1: < 129 bpm
-  zone_2: 129-146 bpm
-  zone_3: 147-163 bpm
-  zone_4: 164-181 bpm
-  zone_5: '> 181 bpm'
-power_zones:
-  zone_1_active_recovery: < 142W
-  zone_2_endurance: 142-162W
-  zone_3_tempo: 163-180W
-  zone_4_lactate_threshold: 181-196W
-  zone_5_vo2_max: 197-224W
-  zone_6_anaerobic: '> 224W'
-recovery_rules:
-- At least 1 full rest day per week
-- Easy spin after hard workouts
-- Listen to body - skip workout if overly fatigued
-training_goals:
-- Improve FTP (Functional Threshold Power)
-- Build endurance for 100km rides
-- Maintain consistent training 4-5x per week
-weekly_structure:
-  easy_rides: 60-70% of weekly volume
-  hard_rides: 5-15% of weekly volume
-  moderate_rides: 20-30% of weekly volume
-workout_preferences:
-- Prefer morning rides when possible
-- Include variety - not just steady state
-- Focus on consistency over peak performance
+Has a cycling training rulebook for plan updates. The rules are:
+
+Heart rate zone:
+  - garmin is the source of truth for HR zones
+  - recommend changes to set zones as needed
+
+Core Gear Rules:
+- Only one gear ratio per workout.
+- Gears can change between workouts within a setup.
+- Switching between setups (Setup 1 ↔ Setup 2) only every ≥4 weeks.
+
+Setup Definitions:
+- Setup 1 (endurance/cadence bias): 
+    - 38×18 (harder)
+    - 38×20 (easier)
+- Setup 2 (strength/force bias):
+  - 38×14 (harder)
+  - 38×16 (easier)
+
+Workout-to-Gear Matching:
+- Endurance / Z2 → easiest gear in setup.
+- Tempo / Sweet Spot → harder gear in setup.
+- Climbing / Strength Endurance → hardest manageable gear.
+- Cadence / Recovery → easiest gear.
+
+Terrain & Gradient:
+- Steep climbs (>10%) → Setup 1 only.
+- Flat/rolling → Setup 2 acceptable.
+- Avoid spinning >110 rpm or grinding <60 rpm for long periods.
+
+Adaptation:
+  - Stay in setup ≥4 weeks; may extend up to 6–8 weeks if progress continues.
+  - Switch setups after recovery week.
+
+Fallback Rules:
+  - If terrain/weather forces a change, stay in current setup, pick easier gear.
+  - Missing a ride does not reset setup timing.
+
+Meta-Rule:
+- When creating or updating the plan, rules must always be consulted and applied.
+
+

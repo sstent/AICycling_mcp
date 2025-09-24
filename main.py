@@ -15,221 +15,14 @@ from pathlib import Path
 import yaml
 from dataclasses import dataclass
 
-# Pydantic AI imports
-try:
-    from pydantic_ai import Agent
-    PYDANTIC_AI_AVAILABLE = True
-except ImportError:
-    PYDANTIC_AI_AVAILABLE = False
-    print("Pydantic AI not available. Install with: pip install pydantic-ai")
-
-# MCP Protocol imports for direct connection
-try:
-    from pydantic_ai.mcp import MCPServerStdio
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    print("pydantic_ai.mcp not available. You might need to upgrade pydantic-ai.")
+from mcp_manager import Config, print_tools, PydanticAIAnalyzer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@dataclass
-class Config:
-    """Application configuration"""
-    openrouter_api_key: str
-    openrouter_model: str = "deepseek/deepseek-r1-0528:free"
-    garth_token: str = ""
-    garth_mcp_server_path: str = "uvx"
-    rules_file: str = "rules.yaml"
-    templates_dir: str = "templates"
 
-def print_tools(tools: List[Any]):
-    """Pretty print the tools list."""
-    if not tools:
-        print("\nNo tools available.")
-        return
 
-    print(f"\n{'='*60}")
-    print("AVAILABLE TOOLS")
-    print(f"\n{'='*60}")
-
-    for i, tool in enumerate(tools, 1):
-        print(f"\n{i}. {tool.name}")
-        if tool.description:
-            print(f"   Description: {tool.description}")
-
-        if hasattr(tool, 'inputSchema') and tool.inputSchema:
-            properties = tool.inputSchema.get("properties", {})
-            if properties:
-                print("   Parameters:")
-                required_params = tool.inputSchema.get("required", [])
-                for prop_name, prop_info in properties.items():
-                    prop_type = prop_info.get("type", "unknown")
-                    prop_desc = prop_info.get("description", "")
-                    required = prop_name in required_params
-                    req_str = " (required)" if required else " (optional)"
-                    print(f"     - {prop_name} ({prop_type}){req_str}: {prop_desc}")
-
-    print(f"\n{'='*60}")
-
-class PydanticAIAnalyzer:
-    """Pydantic AI powered cycling analyzer"""
-    
-    def __init__(self, config: Config):
-        self.config = config
-        self.mcp_server = None
-        self.available_tools = []
-        
-        if not PYDANTIC_AI_AVAILABLE or not MCP_AVAILABLE:
-            raise Exception("Pydantic AI or MCP not available. Please check your installation.")
-        
-        os.environ['OPENROUTER_API_KEY'] = config.openrouter_api_key
-        os.environ['OPENAI_BASE_URL'] = "https://openrouter.ai/api/v1"
-        os.environ['OPENAI_DEFAULT_HEADERS'] = json.dumps({
-            "HTTP-Referer": "https://github.com/cycling-analyzer",
-            "X-Title": "Cycling Workout Analyzer"
-        })
-        
-        env = os.environ.copy()
-        env["GARTH_TOKEN"] = config.garth_token
-        
-        server_executable = shutil.which(config.garth_mcp_server_path)
-        if not server_executable:
-            logger.error(f"'{config.garth_mcp_server_path}' not found in PATH. MCP tools will be unavailable.")
-        else:
-            self.mcp_server = MCPServerStdio(
-                command=server_executable,
-                args=["garth-mcp-server"],
-                env=env,
-            )
-
-        model_name = f"openrouter:{config.openrouter_model}"
-        
-        self.agent = Agent(
-            model=model_name,
-            system_prompt="""You are an expert cycling coach with access to comprehensive Garmin Connect data.
-            You analyze cycling workouts, provide performance insights, and give actionable training recommendations.
-            Use the available tools to gather detailed workout data and provide comprehensive analysis.""",
-            toolsets=[self.mcp_server] if self.mcp_server else []
-        )
-
-    async def initialize(self):
-        """Initialize the analyzer and connect to MCP server"""
-        logger.info("Initializing Pydantic AI analyzer...")
-        if self.agent and self.mcp_server:
-            try:
-                await asyncio.wait_for(self.agent.__aenter__(), timeout=45)
-                logger.info("✓ Agent context entered successfully")
-                self.available_tools = await self.mcp_server.list_tools()
-                logger.info(f"✓ Found {len(self.available_tools)} MCP tools.")
-            except asyncio.TimeoutError:
-                logger.error("Agent initialization timed out. MCP tools will be unavailable.")
-                self.mcp_server = None
-            except Exception as e:
-                logger.error(f"Agent initialization failed: {e}. MCP tools will be unavailable.")
-                self.mcp_server = None
-        else:
-            logger.warning("MCP server not configured. MCP tools will be unavailable.")
-
-    async def cleanup(self):
-        """Cleanup resources"""
-        if self.agent and self.mcp_server:
-            await self.agent.__aexit__(None, None, None)
-        logger.info("Cleanup completed")
-
-    async def analyze_last_workout(self, training_rules: str) -> str:
-        """Analyze the last cycling workout using Pydantic AI"""
-        logger.info("Analyzing last workout with Pydantic AI...")
-        
-        prompt = f"""
-        Please analyze my most recent cycling workout. Use the get_activities tool to fetch my recent activities, 
-        then focus on the latest cycling workout.
-
-        My training rules and goals:
-        {training_rules}
-
-        Please provide:
-        1. Overall assessment of the workout
-        2. How well it aligns with my rules and goals
-        3. Areas for improvement
-        4. Specific feedback on power, heart rate, duration, and intensity
-        5. Recovery recommendations
-        6. Comparison with typical performance metrics
-        
-        Use additional Garmin tools (like hrv_data or nightly_sleep) if they would provide relevant context.
-        """
-
-        try:
-            result = await self.agent.run(prompt)
-            return result.text
-        except Exception as e:
-            logger.error(f"Error in workout analysis: {e}")
-            return f"Error analyzing workout: {e}"
-
-    async def suggest_next_workout(self, training_rules: str) -> str:
-        """Suggest next workout using Pydantic AI"""
-        logger.info("Generating workout suggestion with Pydantic AI...")
-        
-        prompt = f"""
-        Please suggest my next cycling workout based on my recent training history. Use the get_activities tool 
-        to get my recent activities and analyze the training pattern.
-
-        My training rules and goals:
-        {training_rules}
-
-        Please provide:
-        1. Analysis of my recent training pattern
-        2. Identified gaps or imbalances in my training
-        3. Specific workout recommendation for my next session
-        4. Target zones (power, heart rate, duration)
-        5. Rationale for the recommendation based on recent performance
-        6. Alternative options if weather/time constraints exist
-        7. How this fits into my overall training progression
-
-        Use additional tools like hrv_data or nightly_sleep to inform recovery status and workout readiness.
-        """
-
-        try:
-            result = await self.agent.run(prompt)
-            return result.text
-        except Exception as e:
-            logger.error(f"Error in workout suggestion: {e}")
-            return f"Error suggesting workout: {e}"
-
-    async def enhanced_analysis(self, analysis_type: str, training_rules: str) -> str:
-        """Perform enhanced analysis using Pydantic AI with all available tools"""
-        logger.info(f"Performing enhanced {analysis_type} analysis...")
-        
-        prompt = f"""
-        Please perform a comprehensive {analysis_type} analysis of my cycling training data. 
-        Use all available Garmin tools to gather relevant data including:
-        - Recent activities and workout details
-        - User profile information
-        - Heart rate variability data
-        - Sleep quality data
-        - Any other relevant metrics
-
-        My training rules and goals:
-        {training_rules}
-
-        Focus your {analysis_type} analysis on:
-        1. **Data Gathering**: Use multiple tools to get comprehensive data
-        2. **Performance Analysis**: Analyze power, heart rate, training load, and recovery metrics  
-        3. **Training Periodization**: Consider my training phase and progression
-        4. **Actionable Recommendations**: Provide specific, measurable guidance
-        5. **Risk Assessment**: Identify any signs of overtraining or injury risk
-
-        Be thorough and use multiple data points to support your recommendations.
-        """
-
-        try:
-            result = await self.agent.run(prompt)
-            return result.text
-        except Exception as e:
-            logger.error(f"Error in enhanced analysis: {e}")
-            return f"Error in {analysis_type} analysis: {e}"
 
 class TemplateManager:
     """Manages prompt templates (kept for compatibility)"""
@@ -347,6 +140,43 @@ class CyclingAnalyzer:
         logger.info("Calling initialize()...")
         await self.initialize()
         logger.info("Initialize() completed, starting main loop...")
+        
+        # Pre-call user_profile tool
+        logger.info("Pre-caching user profile...")
+        user_profile = await self.analyzer.get_user_profile()
+        print("\n" + "="*60)
+        print("RAW USER PROFILE (Pre-cached)")
+        print("="*60)
+        print(json.dumps(user_profile, indent=2, default=str))
+        print("="*60)
+        logger.info("User profile pre-cached")
+        
+        # Pre-call get_recent_cycling_activity_details
+        logger.info("Pre-caching recent cycling activity details...")
+        activity_data = await self.analyzer.get_recent_cycling_activity_details()
+        
+        print("\n" + "="*60)
+        print("RAW RECENT ACTIVITIES (Pre-cached)")
+        print("="*60)
+        print(json.dumps(activity_data.get("activities", []), indent=2, default=str))
+        print("="*60)
+        
+        if activity_data.get("last_cycling"):
+            print("\n" + "="*60)
+            print("LAST CYCLING ACTIVITY SUMMARY (Pre-cached)")
+            print("="*60)
+            print(json.dumps(activity_data["last_cycling"], indent=2, default=str))
+            print("="*60)
+            
+            print("\n" + "="*60)
+            print("ACTIVITY DETAILS (Pre-cached)")
+            print("="*60)
+            print(json.dumps(activity_data["details"], indent=2, default=str))
+            print("="*60)
+            logger.info("Recent cycling activity details pre-cached")
+        else:
+            logger.warning("No cycling activity found in recent activities")
+            print("\nWarning: No cycling activity found in recent activities.")
         
         try:
             while True:
