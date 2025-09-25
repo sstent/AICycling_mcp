@@ -6,6 +6,8 @@ CLI Interface - Simple command line interface for the cycling analyzer
 import asyncio
 import logging
 from pathlib import Path
+import argparse
+import sys
 
 from config import Config, load_config, create_sample_config
 from core_app import CyclingAnalyzerApp
@@ -17,11 +19,8 @@ class CLI:
     def __init__(self):
         self.app = None
     
-    async def run(self):
+    async def run(self, args):
         """Main CLI loop"""
-        print("Cycling Workout Analyzer")
-        print("=" * 40)
-        
         # Setup configuration
         try:
             config = self._setup_config()
@@ -33,11 +32,13 @@ class CLI:
             # Initialize app
             await self.app.initialize()
             
-            # Show initial status
-            self._show_status()
-            
-            # Main loop
-            await self._main_loop()
+            if args.command:
+                await self._handle_command(args)
+            else:
+                # Show initial status
+                await self._show_status()
+                # Main loop
+                await self._main_loop()
             
         except KeyboardInterrupt:
             print("\nGoodbye!")
@@ -67,10 +68,10 @@ class CLI:
         
         return config
     
-    def _show_status(self):
+    async def _show_status(self):
         """Show application status"""
         print(f"\nStatus:")
-        print(f"- Available tools: {len(self.app.list_available_tools())}")
+        print(f"- Available tools: {len(await self.app.list_available_tools())}")
         print(f"- Available templates: {len(self.app.list_templates())}")
         print(f"- Cached data keys: {list(self.app.get_cached_data().keys())}")
     
@@ -100,7 +101,7 @@ class CLI:
                 elif choice == "3":
                     await self._enhanced_analysis()
                 elif choice == "4":
-                    self._list_tools()
+                    await self._list_tools()
                 elif choice == "5":
                     self._list_templates()
                 elif choice == "6":
@@ -184,9 +185,9 @@ class CLI:
         print("="*50)
         print(result)
     
-    def _list_tools(self):
+    async def _list_tools(self):
         """List available tools"""
-        tools = self.app.list_available_tools()
+        tools = await self.app.list_available_tools()
         if tools:
             self.app.mcp_client.print_tools()
         else:
@@ -247,10 +248,21 @@ Weekly Structure:
                 f.write(default_rules)
             return default_rules
 
+    async def _handle_command(self, args):
+        """Handle non-interactive commands"""
+        if args.command == "analyze_last":
+            await self._analyze_last_workout()
+        else:
+            print(f"Unknown command: {args.command}")
+
 async def main():
     """CLI entry point"""
+    parser = argparse.ArgumentParser(description="Cycling Workout Analyzer")
+    parser.add_argument('command', nargs='?', help="Command to execute (e.g., analyze_last)")
+    args = parser.parse_args()
+
     cli = CLI()
-    await cli.run()
+    await cli.run(args)
 
 if __name__ == "__main__":
     asyncio.run(main())

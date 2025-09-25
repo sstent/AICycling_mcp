@@ -1,0 +1,2 @@
+USER INFO:
+User ID: {user_info[id]}

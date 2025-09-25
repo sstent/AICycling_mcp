@@ -1,0 +1,11 @@
+Analyze my most recent cycling workout using the provided data.
+
+{activity_summary_section}
+
+{user_info_section}
+
+{training_rules_section}
+
+{assessment_points}
+
+Focus on the provided activity details for your analysis.

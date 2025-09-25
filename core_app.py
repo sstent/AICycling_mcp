@@ -70,7 +70,7 @@ class CyclingAnalyzerApp:
             act for act in activities
             if "cycling" in act.get("activityType", {}).get("typeKey", "").lower()
         ]
-        return max(cycling_activities, key=lambda x: x.get("start_time", "")) if cycling_activities else None
+        return max(cycling_activities, key=lambda x: x.get("startTimeGmt", 0)) if cycling_activities else None
     
     # Core functionality methods
     
@@ -80,13 +80,13 @@ class CyclingAnalyzerApp:
         
         # Prepare context data
         context = {
-            "user_profile": self.cache_manager.get("user_profile", {}),
-            "recent_activities": self.cache_manager.get("recent_activities", []),
-            "last_cycling_details": self.cache_manager.get("last_cycling_details", {}),
+            "user_info": self.cache_manager.get("user_profile", {}),
+            "activity_summary": self.cache_manager.get("last_cycling_details", {}),
             **kwargs
         }
         
         # Load and render template
+        logger.info(f"Rendering template {template_name} with context keys: {list(context.keys())}")
         prompt = self.template_engine.render(template_name, **context)
         
         # Call LLM
@@ -122,9 +122,9 @@ class CyclingAnalyzerApp:
     
     # Utility methods
     
-    def list_available_tools(self) -> list:
+    async def list_available_tools(self) -> list:
         """Get list of available MCP tools"""
-        return self.mcp_client.list_tools()
+        return await self.mcp_client.list_tools()
     
     def list_templates(self) -> list:
         """Get list of available templates"""
@@ -145,13 +145,13 @@ async def main():
         await app.initialize()
         
         # Example usage
-        print("Available tools:", len(app.list_available_tools()))
+        print("Available tools:", len(await app.list_available_tools()))
         print("Available templates:", len(app.list_templates()))
         
         # Run analysis
-        analysis = await app.analyze_workout("analyze_last_workout", 
-                                            training_rules="Sample rules")
-        print("Analysis:", analysis[:200] + "...")
+        # analysis = await app.analyze_workout("analyze_last_workout",
+        #                                     training_rules="Sample rules")
+        # print("Analysis:", analysis[:200] + "...")
         
     except Exception as e:
         logger.error(f"Application error: {e}")

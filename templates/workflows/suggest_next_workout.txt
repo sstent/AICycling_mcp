@@ -1,0 +1,10 @@
+Please suggest my next cycling workout based on my recent training history.
+
+{training_rules_section}
+
+Please provide:
+1. Analysis of my recent training pattern
+2. Identified gaps or imbalances in my training
+3. Specific workout recommendation for my next session
+4. Target zones (power, heart rate, duration)
+5. Rationale for the recommendation based on recent performance

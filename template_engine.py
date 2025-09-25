@@ -122,11 +122,13 @@ class TemplateEngine:
                 try:
                     section_content = self.load_template(section_file)
                     # Render section with same kwargs
-                    section_rendered = section_content.format(**kwargs)
+                    # Recursively render the section content
+                    section_rendered = self.render(section_file, **kwargs)
                     content = content.replace(placeholder, section_rendered)
-                except (FileNotFoundError, KeyError) as e:
+                except (FileNotFoundError, KeyError, ValueError) as e:
                     logger.warning(f"Could not process section {section_name}: {e}")
-                    # Leave placeholder as-is if section can't be loaded
+                    # Replace with empty string if section fails
+                    content = content.replace(placeholder, "")
         
         return content
     

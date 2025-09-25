@@ -1,0 +1,5 @@
+Perform enhanced {analysis_type} analysis using all available data and tools.
+
+Available cached data: {cached_data}
+
+Use MCP tools as needed to gather additional data for comprehensive analysis.
