@@ -16,7 +16,7 @@ except ImportError:
     PYDANTIC_AI_AVAILABLE = False
     Agent = None
 
-from config import Config
+from ..config import Config
 
 logger = logging.getLogger(__name__)
 

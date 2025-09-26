@@ -7,11 +7,11 @@ Fallback to standard MCP if needed, but prefer custom implementation
 import logging
 from typing import List, Dict, Any, Optional
 
-from config import Config
+from ..config import Config
 
 # Try to import both implementations
 try:
-    from custom_garth_mcp import CustomGarthMCP, GarthTool
+    from .custom_garth_mcp import CustomGarthMCP, GarthTool
     CUSTOM_GARTH_AVAILABLE = True
 except ImportError:
     CUSTOM_GARTH_AVAILABLE = False

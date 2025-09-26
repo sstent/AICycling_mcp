@@ -19,7 +19,7 @@ except ImportError:
     GARTH_AVAILABLE = False
     garth = None
 
-from cache_manager import CacheManager
+from ..core.cache_manager import CacheManager
 
 logger = logging.getLogger(__name__)
 

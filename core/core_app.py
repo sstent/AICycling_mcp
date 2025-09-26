@@ -8,11 +8,11 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from config import Config, load_config
-from llm_client import LLMClient
-from mcp_client import MCPClient
-from cache_manager import CacheManager
-from template_engine import TemplateEngine
+from ..config import Config, load_config
+from ..llm.llm_client import LLMClient
+from ..mcp.mcp_client import MCPClient
+from .cache_manager import CacheManager
+from .template_engine import TemplateEngine
 
 logger = logging.getLogger(__name__)
 

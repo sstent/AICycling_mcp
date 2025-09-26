@@ -11,9 +11,9 @@ import sys
 from rich.console import Console
 from rich.markdown import Markdown
 
-from config import Config, load_config, create_sample_config
-from core_app import CyclingAnalyzerApp
-from template_engine import create_default_templates
+from ..config import Config, load_config, create_sample_config
+from ..core.core_app import CyclingAnalyzerApp
+from ..core.template_engine import create_default_templates
 
 class CLI:
     """Command line interface"""
