@@ -1,5 +1,8 @@
 Analyze my most recent cycling workout using the provided data.
 
+DATA QUALITY ASSESSMENT:
+{data_quality_note}
+
 {activity_summary_section}
 
 {user_info_section}
@@ -8,4 +11,17 @@ Analyze my most recent cycling workout using the provided data.
 
 {assessment_points}
 
-Focus on the provided activity details for your analysis.
+IMPORTANT ANALYSIS GUIDANCE:
+{if data_quality_is_indoor}
+This is an indoor cycling activity. Speed, elevation, and GPS data may be missing or estimated. Focus analysis on:
+- Power metrics (average power, max power, normalized power)
+- Heart rate zones and distribution
+- Duration and intensity relative to FTP
+- Cadence consistency
+- Training stress score (TSS)
+Avoid speed-based analysis or comparisons with outdoor rides.
+{else}
+This is an outdoor cycling activity with full metrics available. Consider all data points including speed, elevation, and route characteristics.
+{endif}
+
+Focus on the provided activity details for your analysis, accounting for any missing data as noted above.

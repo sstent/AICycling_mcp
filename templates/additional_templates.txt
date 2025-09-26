@@ -1,0 +1,159 @@
+# templates/workflows/training_load_analysis.txt
+
+Analyze training load, fatigue, and recovery status using calculated metrics.
+
+TRAINING LOAD ANALYSIS:
+=======================
+
+Current Training Load Status:
+- Fitness (Chronic Training Load): {training_load[chronic_load]:.1f}
+- Fatigue (Acute Training Load): {training_load[acute_load]:.1f}  
+- Form (Training Stress Balance): {training_load[form]:+.1f}
+- Overall Status: {form_status}
+
+Training Load Interpretation:
+- Fitness Level: {% if training_load.fitness > 60 %}High{% elif training_load.fitness > 30 %}Moderate{% else %}Building{% endif %}
+- Fatigue Level: {% if training_load.fatigue > 80 %}Very High{% elif training_load.fatigue > 50 %}High{% elif training_load.fatigue > 25 %}Moderate{% else %}Low{% endif %}
+- Form Status: {% if training_load.form > 5 %}Fresh{% elif training_load.form > -5 %}Maintaining{% elif training_load.form > -15 %}Building{% else %}Overreached{% endif %}
+
+PERFORMANCE TRENDS (6 weeks):
+{% for trend in performance_trends %}
+- {trend.metric}: {trend.trend_direction} ({trend.trend_7day:+.1f}% vs 1wk, {trend.trend_30day:+.1f}% vs 1mo)
+  Confidence: {trend.confidence:.0%}
+{% endfor %}
+
+MY TRAINING RULES:
+{training_rules}
+
+Based on this training load analysis, provide:
+
+1. **Current Training Status Assessment**: 
+   - Is the form score of {training_load[form]:+.1f} optimal for continued training?
+   - What does the fitness/fatigue balance indicate about training adaptation?
+
+2. **Fatigue Management**: 
+   - With current fatigue at {training_load[fatigue]:.1f}, what's the risk level?
+   - How many recovery days are recommended before next hard session?
+
+3. **Performance Trend Analysis**:
+   - Which metrics show the strongest positive trends?
+   - Are there concerning negative trends that need addressing?
+   - How do the trends align with the current training load?
+
+4. **Training Periodization Recommendations**:
+   - Should training intensity increase, decrease, or maintain?
+   - What's the optimal training focus for the next 7-14 days?
+   - When would be the best time for a recovery week?
+
+5. **Risk Assessment**:
+   - Overtraining risk: {% if training_load.form < -20 %}HIGH{% elif training_load.form < -10 %}MODERATE{% else %}LOW{% endif %}
+   - Detraining risk: {% if training_load.form > 10 %}MODERATE{% else %}LOW{% endif %}
+   - Plateau risk: {% if performance_trends|length == 0 %}UNKNOWN{% else %}LOW{% endif %}
+
+6. **Specific Action Plan**: Based on form score of {training_load[form]:+.1f}, recommend:
+   - Training intensity for next 3 workouts
+   - Target training stress score range
+   - Recovery activities and timing
+
+Focus on actionable recommendations based on the calculated training load metrics.
+
+---
+
+# templates/workflows/suggest_next_workout_data_driven.txt
+
+Data-driven workout suggestion based on training load and performance trends.
+
+WORKOUT RECOMMENDATION ANALYSIS:
+================================
+
+Training Load Context:
+{% if training_load %}
+- Fitness: {training_load.fitness:.1f}
+- Fatigue: {training_load.fatigue:.1f}
+- Form: {training_load.form:+.1f}
+{% else %}
+- Training load data: Not available
+{% endif %}
+
+Recent Workout Pattern (last 7 cycling sessions):
+- Average Intensity: {recent_workout_analysis[avg_intensity]}/10
+- Average Duration: {recent_workout_analysis[avg_duration]:.0f} minutes
+- Pattern Analysis: {recent_workout_analysis[pattern_analysis]}
+- Workout Types: {', '.join(recent_workout_analysis[workout_types])}
+
+Performance Trends:
+{% for trend in performance_trends %}
+- {trend.metric_name}: {trend.trend_direction} ({trend.trend_7day:+.1f}% change)
+{% endfor %}
+
+Recommendation Category: {recommendation_type}
+
+MY TRAINING RULES:
+{training_rules}
+
+{% if user_ftp %}Current FTP: {user_ftp}W{% endif %}
+
+Based on this comprehensive data analysis, provide:
+
+1. **Next Workout Prescription**:
+   - Workout Type: [Specify: Recovery, Endurance, Tempo, Threshold, VO2max, Neuromuscular]
+   - Duration: [Specific minute range]
+   - Intensity: [Power zones if FTP available, or HR zones/RPE]
+   - Structure: [Intervals, steady state, fartlek, etc.]
+
+2. **Scientific Rationale**:
+   - How does this workout address the "{recommendation_type}" need?
+   - Why is this optimal given form score of {training_load.form if training_load else 'unknown'}?
+   - How will it impact the current performance trends?
+
+3. **Specific Workout Details**:
+   {% if user_ftp %}
+   Power-Based Workout (FTP: {user_ftp}W):
+   - Zone 1 (Active Recovery): < {(user_ftp * 0.55)|int}W
+   - Zone 2 (Endurance): {(user_ftp * 0.56)|int}-{(user_ftp * 0.75)|int}W
+   - Zone 3 (Tempo): {(user_ftp * 0.76)|int}-{(user_ftp * 0.90)|int}W
+   - Zone 4 (Threshold): {(user_ftp * 0.91)|int}-{(user_ftp * 1.05)|int}W
+   - Zone 5 (VO2max): {(user_ftp * 1.06)|int}-{(user_ftp * 1.20)|int}W
+   {% else %}
+   RPE/HR-Based Workout (no power meter):
+   - Easy: RPE 3-4, conversational pace
+   - Moderate: RPE 5-6, can speak in short phrases
+   - Hard: RPE 7-8, difficult to speak
+   - Very Hard: RPE 9-10, all-out effort
+   {% endif %}
+
+4. **Single Speed Considerations** (if applicable):
+   - Recommended gear ratio for this workout
+   - Terrain considerations for optimal execution
+   - Cadence targets and adjustments
+
+5. **Recovery Integration**:
+   - How much recovery time after this workout?
+   - What recovery activities are recommended?
+   - When can the next structured workout occur?
+
+6. **Progressive Overload Strategy**:
+   - How does this workout build on recent training?
+   - What metrics should improve from this session?
+   - Next week's progression plan
+
+7. **Alternative Options**: Provide 2-3 alternative workouts if conditions change:
+   - Weather-dependent alternatives
+   - Time-constrained alternatives  
+   - Equipment-limited alternatives
+
+Focus on specific, measurable workout prescriptions based on the data trends and training load analysis.
+
+---
+
+# templates/base/data_sections/workout_data.txt
+
+DETAILED WORKOUT DATA:
+Duration: {duration_minutes:.0f} minutes ({duration_minutes//60:.0f}h {duration_minutes%60:.0f}m)
+Distance: {distance_km:.1f} km
+Average Speed: {avg_speed_kmh:.1f} km/h (max: {max_speed_kmh:.1f} km/h)
+Elevation Gain: {elevation_gain_m:.0f} m
+{% if avg_hr %}Average Heart Rate: {avg_hr:.0f} bpm{% endif %}
+{% if max_hr %}Maximum Heart Rate: {max_hr:.0f} bpm{% endif %}
+{% if avg_power %}Average Power: {avg_power:.0f} W{% endif %}
+{% if max_power %}Maximum Power: {max_power:.0f} W{% endif %}

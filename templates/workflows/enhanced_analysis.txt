@@ -1,5 +1,17 @@
 Perform enhanced {analysis_type} analysis using all available data and tools.
 
+DATA QUALITY CONTEXT:
+{data_quality.note}
+
 Available cached data: {cached_data}
 
-Use MCP tools as needed to gather additional data for comprehensive analysis.
+Use MCP tools as needed to gather additional data for comprehensive analysis. When using tools, be aware of potential data limitations in recent activities.
+
+ANALYSIS GUIDANCE:
+{if data_quality.is_indoor}
+This is an indoor activity analysis. Focus on power-based metrics and heart rate zones. Speed and elevation data may be limited or estimated.
+{else}
+This is an outdoor activity analysis. Full metrics including speed, elevation, and route data are available.
+{endif}
+
+Account for missing or estimated data when performing the analysis.

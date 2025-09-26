@@ -1,10 +1,22 @@
 Please suggest my next cycling workout based on my recent training history.
 
+RECENT DATA QUALITY:
+{data_quality.note}
+
 {training_rules_section}
 
 Please provide:
-1. Analysis of my recent training pattern
-2. Identified gaps or imbalances in my training
+1. Analysis of my recent training pattern, noting any data limitations from recent activities
+2. Identified gaps or imbalances in my training, considering data quality
 3. Specific workout recommendation for my next session
-4. Target zones (power, heart rate, duration)
-5. Rationale for the recommendation based on recent performance
+4. Target zones (power, heart rate, duration) - adjust for indoor vs outdoor based on recent data quality
+5. Rationale for the recommendation based on recent performance and data availability
+
+GUIDANCE FOR SUGGESTIONS:
+{if data_quality.is_indoor}
+Recent activities were indoor. Consider recommending outdoor rides if weather permits, or advanced indoor intervals if continuing indoor training.
+{else}
+Recent activities were outdoor. Balance with indoor options if needed for recovery or weather.
+{endif}
+
+Account for missing metrics in recent data when making recommendations.

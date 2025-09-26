@@ -319,7 +319,11 @@ class CustomGarthMCP:
         
         elif tool_name == "get_activity_details":
             activity_id = parameters["activity_id"]
-            return garth.connectapi(f"/activity-service/activity/{activity_id}")
+            raw_data = garth.connectapi(f"/activity-service/activity/{activity_id}")
+            
+            # Normalize activity data for consistent field access
+            normalized_data = self._normalize_activity_data(raw_data)
+            return normalized_data
         
         # Daily metrics - many don't work, so provide fallbacks
         elif tool_name == "daily_steps":
@@ -443,6 +447,49 @@ class CustomGarthMCP:
         
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
+    
+    def _normalize_activity_data(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize activity data to ensure consistent field structure"""
+        if not isinstance(raw_data, dict):
+            logger.warning("Invalid activity data received")
+            return {}
+        
+        # Ensure summaryDTO exists
+        summary_dto = raw_data.get('summaryDTO', {})
+        if not isinstance(summary_dto, dict):
+            summary_dto = {}
+        
+        # Define expected fields with defaults
+        expected_fields = {
+            'averageSpeed': None,
+            'maxSpeed': None,
+            'averageHR': None,
+            'maxHR': None,
+            'averagePower': None,
+            'maxPower': None,
+            'normalizedPower': None,
+            'trainingStressScore': None,
+            'elevationGain': None,
+            'elevationLoss': None,
+            'distance': None,
+            'duration': None,
+        }
+        
+        # Fill missing fields
+        for field, default in expected_fields.items():
+            if field not in summary_dto:
+                summary_dto[field] = default
+                logger.debug(f"Set default for missing field: {field}")
+        
+        # Update raw_data with normalized summaryDTO
+        raw_data['summaryDTO'] = summary_dto
+        
+        # Add activity type indicator for indoor detection
+        activity_type = raw_data.get('activityType', {}).get('typeKey', '').lower()
+        raw_data['is_indoor'] = 'indoor' in activity_type or 'trainer' in activity_type
+        
+        logger.debug(f"Normalized activity data for ID {raw_data.get('activityId', 'unknown')}")
+        return raw_data
     
     def print_tools(self):
         """Pretty print available tools"""

@@ -1,0 +1,146 @@
+# templates/workflows/estimate_ftp_no_power.txt
+
+Estimate FTP (Functional Threshold Power) for cycling workouts without a power meter.
+
+WORKOUT DATA FOR FTP ESTIMATION:
+================================
+
+Basic Metrics:
+- Duration: {duration_minutes} minutes
+- Distance: {distance_km} km  
+- Average Speed: {avg_speed_kmh} km/h
+- Elevation Gain: {elevation_gain_m} m
+- Average Heart Rate: {avg_hr} bpm
+- Max Heart Rate: {max_hr} bpm
+
+Calculated Intensity Factors:
+- Heart Rate Intensity: {hr_intensity:.1%} of max HR
+- Speed-Power Estimation: {estimated_power_from_speed} watts
+- Elevation-Adjusted Power: {elevation_adjusted_power} watts
+- Estimated FTP: {estimated_ftp} watts
+
+Historical FTP Estimates:
+{% for estimate in ftp_history %}
+- {estimate.date}: {estimate.estimated_ftp}W ({estimate.workout_type})
+{% endfor %}
+
+ANALYSIS FRAMEWORK:
+
+1. **Speed-Based Power Estimation**: 
+   - Uses relationship between speed and power requirements
+   - Accounts for air resistance (speed²) and rolling resistance
+   - Formula: Power ≈ (speed_m/s)^2.5 × 3.5 × elevation_factor
+
+2. **Heart Rate Validation**:
+   - FTP typically occurs at 75-85% of max heart rate
+   - Current workout intensity: {hr_intensity:.1%}
+   - Scaling factor applied based on HR zones
+
+3. **Terrain Adjustment**:
+   - Elevation gain per km: {elevation_per_km:.1f} m/km
+   - Power requirement increases ~10W per 1% gradient
+   - Applied elevation factor: {elevation_factor:.2f}
+
+Please provide:
+
+1. **FTP Estimate Validation**: Is the estimated {estimated_ftp}W reasonable for this workout intensity?
+
+2. **Comparison with History**: How does this estimate compare to previous estimates? Are there trends?
+
+3. **Confidence Assessment**: Rate confidence in this estimate (1-10) based on:
+   - Heart rate data quality
+   - Workout duration and intensity
+   - Terrain consistency
+   - Historical estimate consistency
+
+4. **Improvement Recommendations**: To get more accurate FTP estimates without power:
+   - What types of workouts provide better estimates?
+   - How to improve heart rate data quality?
+   - When might a power meter become worthwhile?
+
+5. **Training Zone Implications**: Based on estimated FTP of {estimated_ftp}W, what are the training zones?
+
+---
+
+# templates/workflows/single_speed_gear_analysis.txt
+
+Analyze single speed bike gear selection and optimization.
+
+SINGLE SPEED GEAR ANALYSIS:
+===========================
+
+Current Ride Analysis:
+- Average Speed: {avg_speed_kmh} km/h
+- Duration: {duration_minutes} minutes
+- Elevation Gain: {elevation_gain_m} m
+- Terrain Classification: {terrain_type}
+
+Estimated Gear Usage:
+- Primary Gear: {estimated_chainring}t × {estimated_cog}t
+- Gear Ratio: {estimated_gear_ratio:.1f}
+- Gear Inches: {gear_inches:.1f}"
+- Development: {development_meters:.1f}m per pedal stroke
+
+Available Gear Options:
+{% for gear in available_gears %}
+- {gear.chainring}t × {gear.cog}t = {gear.ratio:.1f} ratio ({gear.gear_inches:.1f}", {gear.development:.1f}m)
+{% endfor %}
+
+Gear Usage by Terrain Type:
+{% for terrain, usage in gear_usage_by_terrain.items() %}
+{terrain}:
+  {% for gear, percentage in usage.items() %}
+  - {gear}: {percentage}% of rides
+  {% endfor %}
+{% endfor %}
+
+Optimization Analysis:
+- Best gear for flat terrain: {best_flat_gear}
+- Best gear for climbing: {best_climbing_gear}  
+- Most versatile gear: {most_versatile_gear}
+- Current efficiency rating: {efficiency_rating}/10
+
+GEAR SELECTION SCIENCE:
+
+1. **Gear Ratio Calculation**:
+   - Ratio = Chainring teeth ÷ Rear cog teeth
+   - Higher ratio = harder to pedal, higher top speed
+   - Lower ratio = easier to pedal, better for climbing
+
+2. **Development (Rollout)**:
+   - Distance traveled per pedal stroke
+   - Formula: (Chainring ÷ Cog) × Wheel circumference
+   - Typical range: 3.5-7.0 meters
+
+3. **Cadence Relationship**:
+   - Speed = Cadence (RPM) × Development ÷ 60
+   - Optimal cadence typically 80-100 RPM
+   - Current estimated cadence: {estimated_cadence} RPM
+
+Please analyze:
+
+1. **Current Gear Efficiency**: How well suited was the {estimated_chainring}×{estimated_cog} gear for this ride's terrain and intensity?
+
+2. **Alternative Gear Performance**: Which of the available gear options would have been better/worse and why?
+
+3. **Terrain-Specific Recommendations**:
+   - Best gear for steep climbs ({elevation_per_km:.1f}m/km elevation rate)
+   - Best gear for flat speed sections
+   - Most versatile single gear for mixed terrain
+
+4. **Cadence Analysis**: 
+   - Was the estimated {estimated_cadence} RPM cadence in optimal range?
+   - How would different gears affect cadence for this speed?
+
+5. **Future Gear Selection**: Based on your riding patterns, recommend:
+   - Primary chainring/cog combination
+   - Backup gear for different conditions
+   - When gear changes might be worth the effort
+
+6. **Training Implications**: How does single speed riding with this gear ratio affect:
+   - Power development
+   - Cadence skills  
+   - Climbing technique
+   - Overall fitness adaptation
+
+Focus on practical gear optimization based on the calculated ratios and usage patterns.

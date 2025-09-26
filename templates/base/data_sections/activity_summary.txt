@@ -1,2 +1,43 @@
 ACTIVITY SUMMARY:
-Activity ID: {activity_summary[activityId]}
+Activity ID: {activity_summary_activityId}
+Activity Name: {activity_summary_activityName}
+Activity Type: {activity_summary_activityTypeDTO_typeKey} (Indoor: {activity_summary_is_indoor})
+
+Start Time: {activity_summary_summaryDTO_startTimeLocal}
+Duration: {activity_summary_summaryDTO_duration} seconds if available, otherwise N/A
+Distance: {activity_summary_summaryDTO_distance} meters if available, otherwise N/A
+
+SPEED DATA:
+{if data_quality_is_indoor}
+Note: Indoor cycling - speed data typically not available or estimated from power/cadence
+{else}
+Average Speed: {activity_summary_summaryDTO_averageSpeed} m/s
+Max Speed: {activity_summary_summaryDTO_maxSpeed} m/s
+{endif}
+
+HEART RATE:
+Average HR: {activity_summary_summaryDTO_averageHR} bpm if available
+Max HR: {activity_summary_summaryDTO_maxHR} bpm if available
+
+POWER (if available):
+Average Power: {activity_summary_summaryDTO_averagePower} watts
+Max Power: {activity_summary_summaryDTO_maxPower} watts
+Normalized Power: {activity_summary_summaryDTO_normalizedPower} watts
+Training Stress Score: {activity_summary_summaryDTO_trainingStressScore}
+
+ELEVATION DATA:
+{if data_quality_is_indoor}
+Note: Indoor cycling - elevation data not applicable
+{else}
+Total Ascent: {activity_summary_summaryDTO_elevationGain} meters
+Total Descent: {activity_summary_summaryDTO_elevationLoss} meters
+{endif}
+
+GPS DATA:
+{if data_quality_is_indoor}
+Note: Indoor cycling - GPS data not available
+{else}
+GPS tracking available - full route data present
+{endif}
+
+Note: Missing fields shown as descriptions above. For indoor activities, focus analysis on power, heart rate, and duration metrics.

@@ -1,0 +1,61 @@
+# templates/workflows/analyze_workout_with_metrics.txt
+
+Analyze this cycling workout using the calculated metrics and deterministic data provided.
+
+DETERMINISTIC WORKOUT ANALYSIS:
+================================
+
+Workout Classification: {workout_summary[workout_classification]}
+Intensity Rating: {workout_summary[intensity_rating]}
+
+KEY METRICS:
+- Duration: {workout_summary[key_metrics][duration]}
+- Distance: {workout_summary[key_metrics][distance]} 
+- Average Speed: {workout_summary[key_metrics][avg_speed]}
+- Elevation Gain: {workout_summary[key_metrics][elevation_gain]}
+
+PERFORMANCE INDICATORS:
+- Efficiency Score: {workout_summary[performance_indicators][efficiency_score]}
+- Estimated FTP: {workout_summary[performance_indicators][estimated_ftp]} W
+- Intensity Factor: {workout_summary[performance_indicators][intensity_factor]}
+
+SINGLE SPEED ANALYSIS:
+{% if workout_summary.single_speed_analysis %}
+- Estimated Gear Used: {workout_summary[single_speed_analysis][estimated_gear]}
+- Gear Ratio: {workout_summary[single_speed_analysis][gear_ratio]:.1f}
+{% endif %}
+
+TRAINING LOAD CONTEXT:
+{% if workout_summary.training_load_context %}
+- Current Fitness Level: {workout_summary[training_load_context][fitness_level]}
+- Fatigue Level: {workout_summary[training_load_context][fatigue_level]} 
+- Training Form: {workout_summary[training_load_context][form]}
+{% endif %}
+
+PERFORMANCE TRENDS (30 days):
+{% for trend in performance_trends %}
+- {trend.metric_name}: {trend.current_value} ({trend.trend_direction}, {trend.trend_7day:+.1f}% vs 7d ago)
+{% endfor %}
+
+CALCULATED RECOVERY RECOMMENDATION: {workout_summary[recovery_guidance]}
+
+MY TRAINING RULES:
+{training_rules}
+
+Based on this deterministic analysis, provide:
+
+1. **Workout Assessment**: How well did this workout align with the calculated intensity rating and classification?
+
+2. **Performance Analysis**: Comment on the efficiency score and how it compares to the performance trends shown above.
+
+3. **FTP Analysis**: {% if workout_summary.performance_indicators.estimated_ftp %}Evaluate the estimated FTP of {workout_summary[performance_indicators][estimated_ftp]}W. Is this reasonable based on the workout intensity?{% else %}No power data available for FTP estimation.{% endif %}
+
+4. **Single Speed Optimization**: {% if workout_summary.single_speed_analysis %}The analysis suggests you used a {workout_summary[single_speed_analysis][estimated_gear]} gear (ratio {workout_summary[single_speed_analysis][gear_ratio]:.1f}). Is this optimal for the terrain and intensity?{% else %}No single speed analysis available.{% endif %}
+
+5. **Training Load Impact**: {% if workout_summary.training_load_context %}With current fitness at {workout_summary[training_load_context][fitness_level]} and form at {workout_summary[training_load_context][form]}, how does this workout fit your training progression?{% else %}Consider tracking training load for better progression insights.{% endif %}
+
+6. **Specific Improvements**: Based on the deterministic metrics, what 2-3 specific areas could be optimized?
+
+7. **Next Workout Suggestion**: Given the calculated recovery recommendation of "{workout_summary[recovery_guidance]}" and current trends, what should your next workout focus on?
+
+Focus your analysis on the calculated metrics rather than general coaching advice.

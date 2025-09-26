@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 import argparse
 import sys
+from rich.console import Console
+from rich.markdown import Markdown
 
 from config import Config, load_config, create_sample_config
 from core_app import CyclingAnalyzerApp
@@ -24,7 +26,7 @@ class CLI:
         # Setup configuration
         try:
             config = self._setup_config()
-            self.app = CyclingAnalyzerApp(config)
+            self.app = CyclingAnalyzerApp(config, test_mode=args.test)
             
             # Setup logging
             logging.basicConfig(level=getattr(logging, config.log_level.upper()))
@@ -134,7 +136,8 @@ class CLI:
         print("\n" + "="*50)
         print("WORKOUT ANALYSIS")
         print("="*50)
-        print(result)
+        console = Console()
+        console.print(Markdown(result))
     
     async def _suggest_next_workout(self):
         """Suggest next workout"""
@@ -148,7 +151,8 @@ class CLI:
         print("\n" + "="*50)
         print("NEXT WORKOUT SUGGESTION")
         print("="*50)
-        print(result)
+        console = Console()
+        console.print(Markdown(result))
     
     async def _enhanced_analysis(self):
         """Enhanced analysis menu"""
@@ -183,7 +187,8 @@ class CLI:
         print(f"\n{'='*50}")
         print(f"ENHANCED {analysis_type.upper()} ANALYSIS")
         print("="*50)
-        print(result)
+        console = Console()
+        console.print(Markdown(result))
     
     async def _list_tools(self):
         """List available tools"""
@@ -259,6 +264,7 @@ async def main():
     """CLI entry point"""
     parser = argparse.ArgumentParser(description="Cycling Workout Analyzer")
     parser.add_argument('command', nargs='?', help="Command to execute (e.g., analyze_last)")
+    parser.add_argument('--test', action='store_true', help="Test mode: print rendered prompt without calling LLM")
     args = parser.parse_args()
 
     cli = CLI()
