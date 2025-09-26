@@ -157,16 +157,16 @@ class CLI:
     async def _enhanced_analysis(self):
         """Enhanced analysis menu"""
         print("\nSelect analysis type:")
-        print("a) Performance trends")
-        print("b) Training load analysis")
-        print("c) Recovery assessment")
+        print("a) FTP estimation")
+        print("b) Gear analysis")
+        print("c) Training load analysis")
         
         choice = input("Enter choice (a-c): ").strip().lower()
         
         analysis_types = {
-            'a': 'performance trends',
-            'b': 'training load',
-            'c': 'recovery assessment'
+            'a': 'ftp_estimation',
+            'b': 'gear_analysis',
+            'c': 'training_load'
         }
         
         if choice not in analysis_types:
@@ -174,7 +174,7 @@ class CLI:
             return
         
         analysis_type = analysis_types[choice]
-        print(f"\nPerforming {analysis_type} analysis...")
+        print(f"\nPerforming {analysis_type.replace('_', ' ').title()} analysis...")
         
         # Load training rules
         rules = self._load_training_rules()
@@ -185,7 +185,7 @@ class CLI:
         )
         
         print(f"\n{'='*50}")
-        print(f"ENHANCED {analysis_type.upper()} ANALYSIS")
+        print(f"ENHANCED {analysis_type.replace('_', ' ').upper()} ANALYSIS")
         print("="*50)
         console = Console()
         console.print(Markdown(result))

@@ -19,3 +19,5 @@ garth>=0.4.0
 # Development and testing
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
+sqlalchemy>=2.0.0
+alembic>=1.13.0

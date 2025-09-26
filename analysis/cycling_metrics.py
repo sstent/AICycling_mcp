@@ -54,6 +54,16 @@ class TrainingLoad:
     fatigue: float  # Acute Training Load
     form: float  # Training Stress Balance
 
+@dataclass
+class PerformanceTrend:
+    """Performance trend for a metric"""
+    metric_name: str
+    current_value: float
+    trend_7day: float  # % change over 7 days
+    trend_30day: float  # % change over 30 days
+    trend_direction: str  # "improving", "stable", "declining"
+    confidence: float  # 0-1 based on data points
+
 class CyclingMetricsCalculator:
     """Calculate deterministic cycling metrics"""
     
@@ -360,6 +370,301 @@ class CyclingMetricsCalculator:
             return "declining"
         else:
             return "stable"
+    
+    def calculate_performance_trends(self, workout_history: List[Dict[str, Any]], 
+                                    days: int = 30) -> List[PerformanceTrend]:
+        """Calculate performance trends over specified period"""
+        if not workout_history:
+            return []
+        
+        cutoff_date = datetime.now() - timedelta(days=days)
+        recent_metrics = []
+        
+        for record in workout_history:
+            workout_date = datetime.fromisoformat(record['date'].replace('Z', '+00:00'))
+            if workout_date >= cutoff_date:
+                recent_metrics.append({
+                    'date': workout_date,
+                    'metrics': self.calculate_workout_metrics(record)
+                })
+        
+        if len(recent_metrics) < 2:
+            return []
+        
+        # Sort by date
+        recent_metrics.sort(key=lambda x: x['date'])
+        
+        trends = []
+        
+        # Calculate trends for key metrics
+        metrics_to_track = [
+            ('avg_speed_kmh', 'Average Speed'),
+            ('avg_hr', 'Average Heart Rate'),
+            ('avg_power', 'Average Power'),
+            ('estimated_ftp', 'Estimated FTP'),
+            ('training_stress_score', 'Training Stress Score')
+        ]
+        
+        for metric_attr, metric_name in metrics_to_track:
+            trend = self._calculate_single_metric_trend(recent_metrics, metric_attr, metric_name, days)
+            if trend:
+                trends.append(trend)
+        
+        return trends
+    
+    def _calculate_single_metric_trend(self, recent_metrics: List[Dict], 
+                                      metric_attr: str, metric_name: str, 
+                                      days: int) -> Optional[PerformanceTrend]:
+        """Calculate trend for a single metric"""
+        # Extract values, filtering out None values
+        values_with_dates = []
+        for record in recent_metrics:
+            value = getattr(record['metrics'], metric_attr)
+            if value is not None:
+                values_with_dates.append((record['date'], value))
+        
+        if len(values_with_dates) < 2:
+            return None
+        
+        # Calculate current value (average of last 3 workouts)
+        recent_values = [v for _, v in values_with_dates[-3:]]
+        current_value = sum(recent_values) / len(recent_values)
+        
+        # Calculate 7-day trend if we have enough data
+        week_ago = datetime.now() - timedelta(days=7)
+        week_values = [v for d, v in values_with_dates if d >= week_ago]
+        
+        if len(week_values) >= 2:
+            week_old_avg = sum(week_values[:len(week_values)//2]) / (len(week_values)//2)
+            week_recent_avg = sum(week_values[len(week_values)//2:]) / (len(week_values) - len(week_values)//2)
+            trend_7day = ((week_recent_avg - week_old_avg) / week_old_avg * 100) if week_old_avg > 0 else 0
+        else:
+            trend_7day = 0
+        
+        # Calculate 30-day trend
+        if len(values_with_dates) >= 4:
+            old_avg = sum(v for _, v in values_with_dates[:len(values_with_dates)//2]) / (len(values_with_dates)//2)
+            recent_avg = sum(v for _, v in values_with_dates[len(values_with_dates)//2:]) / (len(values_with_dates) - len(values_with_dates)//2)
+            trend_30day = ((recent_avg - old_avg) / old_avg * 100) if old_avg > 0 else 0
+        else:
+            trend_30day = 0
+        
+        # Determine trend direction
+        primary_trend = trend_7day if abs(trend_7day) > abs(trend_30day) else trend_30day
+        if primary_trend > 2:
+            trend_direction = "improving"
+        elif primary_trend < -2:
+            trend_direction = "declining"
+        else:
+            trend_direction = "stable"
+        
+        # Calculate confidence based on data points
+        confidence = min(len(values_with_dates) / 10, 1.0)  # Max confidence at 10+ data points
+        
+        return PerformanceTrend(
+            metric_name=metric_name,
+            current_value=round(current_value, 2),
+            trend_7day=round(trend_7day, 1),
+            trend_30day=round(trend_30day, 1),
+            trend_direction=trend_direction,
+            confidence=round(confidence, 2)
+        )
+    
+    def get_ftp_estimates_history(self, performance_history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Get historical FTP estimates for tracking progress"""
+        ftp_history = []
+        
+        for record in performance_history:
+            metrics = self.calculate_workout_metrics(record)
+            if metrics.estimated_ftp:
+                ftp_history.append({
+                    "date": record['date'],
+                    "activity_id": record['activity_id'],
+                    "estimated_ftp": metrics.estimated_ftp,
+                    "workout_type": record['metrics'].get('workout_classification', 'unknown')
+                })
+        
+        # Sort by date and return recent estimates
+        ftp_history.sort(key=lambda x: x['date'], reverse=True)
+        return ftp_history[:20]  # Last 20 estimates
+    
+    def get_gear_usage_analysis(self, performance_history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Get single speed gear usage analysis"""
+        gear_data = []
+        
+        for record in performance_history:
+            metrics = self.calculate_workout_metrics(record)
+            if metrics.estimated_gear_ratio:
+                gear_data.append({
+                    "date": record['date'],
+                    "estimated_ratio": metrics.estimated_gear_ratio,
+                    "chainring": metrics.estimated_chainring,
+                    "cog": metrics.estimated_cog,
+                    "avg_speed": metrics.avg_speed_kmh,
+                    "elevation_gain": metrics.elevation_gain_m,
+                    "terrain_type": self._classify_terrain(metrics)
+                })
+        
+        if not gear_data:
+            return {"message": "No gear data available"}
+        
+        # Analyze gear preferences by terrain
+        gear_preferences = {}
+        for data in gear_data:
+            terrain = data['terrain_type']
+            gear = f"{data['chainring']}x{data['cog']}"
+            
+            if terrain not in gear_preferences:
+                gear_preferences[terrain] = {}
+            if gear not in gear_preferences[terrain]:
+                gear_preferences[terrain][gear] = 0
+            gear_preferences[terrain][gear] += 1
+        
+        # Calculate most common gears
+        all_gears = {}
+        for data in gear_data:
+            gear = f"{data['chainring']}x{data['cog']}"
+            all_gears[gear] = all_gears.get(gear, 0) + 1
+        
+        most_common_gear = max(all_gears.items(), key=lambda x: x[1])
+        
+        return {
+            "total_workouts_analyzed": len(gear_data),
+            "most_common_gear": {
+                "gear": most_common_gear[0],
+                "usage_count": most_common_gear[1],
+                "usage_percentage": round(most_common_gear[1] / len(gear_data) * 100, 1)
+            },
+            "gear_by_terrain": gear_preferences,
+            "gear_recommendations": self._recommend_gears(gear_data)
+        }
+    
+    def _classify_terrain(self, metrics: WorkoutMetrics) -> str:
+        """Classify terrain type from workout metrics"""
+        if metrics.distance_km == 0:
+            return "unknown"
+        
+        elevation_per_km = metrics.elevation_gain_m / metrics.distance_km
+        
+        if elevation_per_km > 15:
+            return "steep_climbing"
+        elif elevation_per_km > 8:
+            return "moderate_climbing"
+        elif elevation_per_km > 3:
+            return "rolling_hills"
+        else:
+            return "flat_terrain"
+    
+    def _recommend_gears(self, gear_data: List[Dict]) -> Dict[str, str]:
+        """Recommend optimal gears for different conditions"""
+        if not gear_data:
+            return {}
+        
+        # Group by terrain and find most efficient gears
+        terrain_efficiency = {}
+        
+        for data in gear_data:
+            terrain = data['terrain_type']
+            gear = f"{data['chainring']}x{data['cog']}"
+            speed = data['avg_speed']
+            
+            if terrain not in terrain_efficiency:
+                terrain_efficiency[terrain] = {}
+            if gear not in terrain_efficiency[terrain]:
+                terrain_efficiency[terrain][gear] = []
+            
+            terrain_efficiency[terrain][gear].append(speed)
+        
+        # Calculate average speeds for each gear/terrain combo
+        recommendations = {}
+        for terrain, gears in terrain_efficiency.items():
+            best_gear = None
+            best_avg_speed = 0
+            
+            for gear, speeds in gears.items():
+                avg_speed = sum(speeds) / len(speeds)
+                if avg_speed > best_avg_speed:
+                    best_avg_speed = avg_speed
+                    best_gear = gear
+            
+            if best_gear:
+                recommendations[terrain] = best_gear
+        
+        return recommendations
+    
+    def load_metrics_history(self, metrics_file: str) -> List[Dict[str, Any]]:
+        """Load performance history from file"""
+        performance_history = []
+        try:
+            with open(metrics_file, 'r') as f:
+                data = json.load(f)
+                performance_history = data.get('performance_history', [])
+                logger.info(f"Loaded {len(performance_history)} workout records")
+        except Exception as e:
+            logger.error(f"Error loading metrics history: {e}")
+            performance_history = []
+        return performance_history
+    
+    def save_metrics_history(self, performance_history: List[Dict[str, Any]], metrics_file: str) -> None:
+        """Save performance history to file"""
+        try:
+            # Keep only last 200 workouts to prevent file from growing too large
+            performance_history = performance_history[-200:]
+            
+            data = {
+                'performance_history': performance_history,
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            with open(metrics_file, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+            
+            logger.debug(f"Saved {len(performance_history)} workout records")
+        except Exception as e:
+            logger.error(f"Error saving metrics history: {e}")
+    
+    def get_workout_summary_for_llm(self, activity_id: str, performance_history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Get structured workout summary optimized for LLM analysis"""
+        # Find the workout
+        workout_record = next((record for record in performance_history if record['activity_id'] == activity_id), None)
+        if not workout_record:
+            return {"error": "No workout found for activity"}
+        
+        metrics = self.calculate_workout_metrics(workout_record)
+        training_load = self.calculate_training_load(performance_history)
+        performance_trends = self.calculate_performance_trends(performance_history)
+        
+        # Generate standardized assessment
+        assessment = generate_standardized_assessment(metrics, training_load)
+        
+        # Format data for LLM consumption
+        summary = {
+            "workout_classification": assessment["workout_classification"],
+            "intensity_rating": f"{assessment['intensity_rating']}/10",
+            "key_metrics": {
+                "duration": f"{metrics.duration_minutes:.0f} minutes",
+                "distance": f"{metrics.distance_km:.1f} km",
+                "avg_speed": f"{metrics.avg_speed_kmh:.1f} km/h",
+                "elevation_gain": f"{metrics.elevation_gain_m:.0f} m"
+            },
+            "performance_indicators": {
+                "efficiency_score": assessment["efficiency_score"],
+                "estimated_ftp": metrics.estimated_ftp,
+                "intensity_factor": metrics.intensity_factor
+            },
+            "recovery_guidance": assessment["recovery_recommendation"],
+            "training_load_context": {
+                "fitness_level": training_load.fitness if training_load else None,
+                "fatigue_level": training_load.fatigue if training_load else None,
+                "form": training_load.form if training_load else None
+            } if training_load else None,
+            "single_speed_analysis": {
+                "estimated_gear": f"{metrics.estimated_chainring}x{metrics.estimated_cog}" if metrics.estimated_gear_ratio else None,
+                "gear_ratio": metrics.estimated_gear_ratio
+            } if metrics.estimated_gear_ratio else None
+        }
+        
+        return summary
 
 # Deterministic analysis helper
 def generate_standardized_assessment(metrics: WorkoutMetrics, 
